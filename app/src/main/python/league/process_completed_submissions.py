@@ -23,6 +23,7 @@ from util.submission_evaluator_bot import load_github_token
 # Config
 REPO = "SimonLucas/planet-wars-rts-submissions"
 DB_PATH = get_default_db_path()
+MIN_AVG_SCORE = 60.0  # agents must beat baselines at least 60% of the time to enter the league
 
 
 def run_command(cmd: List[str], cwd: Optional[Path] = None) -> str:
@@ -141,8 +142,11 @@ def main(limit: Optional[int] = None):
     print(f"📋 Found {len(successful)} successful submissions to process.")
 
     for issue_number, agent, avg in successful:
+        if avg < MIN_AVG_SCORE:
+            print(f"⏭️  Skipping {agent.id} from issue #{issue_number}: AVG={avg:.1f}% < {MIN_AVG_SCORE}% threshold")
+            continue
         try:
-            print(f"🚀 Registering {agent.id} from issue #{issue_number}")
+            print(f"🚀 Registering {agent.id} from issue #{issue_number} (AVG={avg:.1f}%)")
             port, container_id = 123, "99"  # Placeholder
             register_in_db(agent, port, container_id)
         except Exception as e:

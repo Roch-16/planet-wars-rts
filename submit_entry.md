@@ -107,13 +107,55 @@ fun main() {
 
 ## ☕ Python Submission
 
-As for the Kotlin/Java submission, your Python project must produce a 
+As for the Kotlin/Java submission, your Python project must produce a
 single Docker image that runs the WebSocket server.
 
-A complete example, including loading a pre-trained 
-PyTorch Neural Network model is availale in
-this public repository: https://github.com/Priwinn/planet-wars-rts/
-Adapt this to your own agent logic and models.
+### Example Agent
+
+Use [`greedy_heuristic_agent.py`](app/src/main/python/agents/greedy_heuristic_agent.py)
+as your starting point. It shows the correct pattern: subclass `PlanetWarsPlayer`,
+implement `get_action` and `get_agent_type`, and **do not override `prepare_to_play_as`**
+unless you include the `opponent` parameter in the signature:
+
+```python
+# Only override if you need custom setup — must include opponent parameter:
+def prepare_to_play_as(self, player: Player, params: GameParams, opponent=None) -> str:
+    self.player = player
+    self.params = params
+    return self.get_agent_type()
+```
+
+### Example `Dockerfile`
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8080
+
+CMD ["python", "main.py"]
+```
+
+A copy of this Dockerfile is available as [`Dockerfile.python`](Dockerfile.python) in this repo.
+
+### Example `main.py`
+
+```python
+import asyncio
+from client_server.game_agent_server import GameServerAgent
+from agents.my_agent import MyAgent   # replace with your agent class
+
+if __name__ == "__main__":
+    asyncio.run(GameServerAgent(host="0.0.0.0", port=8080, agent=MyAgent()).start())
+```
+
+Your `requirements.txt` must list all Python dependencies. `websockets` and `pydantic` are required at minimum.
 
 
 ---
