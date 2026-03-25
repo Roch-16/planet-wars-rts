@@ -27,7 +27,7 @@ def process_commit_hash(agent_data: dict) -> dict:
     parsed = urlparse(repo_url)
     parts = parsed.path.strip("/").split("/")
 
-    if "commit" in parts:
+    if "commit" in parts or "commits" in parts:
         try:
             user, repo, _, commit_hash = parts[:4]
             new_data["repo_url"] = f"https://github.com/{user}/{repo}.git"

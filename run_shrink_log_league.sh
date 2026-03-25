@@ -19,7 +19,7 @@ shrink_logs() {
 }
 
 for i in $(seq "$N"); do
-  echo "Run $i"
+  echo "Run $i of $N"
   SECONDS=0
 
   # pre-emptively trim logs at the start of each iteration

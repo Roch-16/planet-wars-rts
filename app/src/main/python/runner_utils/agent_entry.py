@@ -60,7 +60,7 @@ def to_agent_commit_entry(agent: AgentEntry) -> AgentCommitEntry:
     if agent.commit:
         commit = agent.commit.strip()
     else:
-        commit_match = re.search(r"/commit/([a-f0-9]{7,40})", agent.repo_url)
+        commit_match = re.search(r"/commits?/([a-f0-9]{7,40})", agent.repo_url)
         if not commit_match:
             raise ValueError(f"No commit hash provided or extractable from repo_url: {agent.repo_url}")
         commit = commit_match.group(1)

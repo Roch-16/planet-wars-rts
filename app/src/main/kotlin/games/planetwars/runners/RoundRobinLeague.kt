@@ -111,9 +111,10 @@ data class RoundRobinLeague(
     fun runRoundRobin(): Map<String, LeagueEntry> {
         val t = System.currentTimeMillis()
         val scores = mutableMapOf<String, LeagueEntry>()
-        for (agent in agents) {
-            // make a new league entry for each agent in a map indexed by agent type
-            scores[agent.getAgentType()] = LeagueEntry(agent.getAgentType())
+        // Cache agent types once upfront to avoid re-calling getAgentType() after connection resets
+        val agentTypes = agents.map { it.getAgentType() }
+        for (type in agentTypes) {
+            scores[type] = LeagueEntry(type)
         }
         // play each agent against every other agent as Player1 and Player2
         // but not against themselves
@@ -125,11 +126,13 @@ data class RoundRobinLeague(
                 val t = System.currentTimeMillis()
                 val agent1 = agents[i]
                 val agent2 = agents[j]
-                println("Running ${agent1.getAgentType()} vs ${agent2.getAgentType()}... ")
+                val type1 = agentTypes[i]
+                val type2 = agentTypes[j]
+                println("Running $type1 vs $type2... ")
                 val result = runPair(agent1, agent2)
                 // update the league scores for each agent
-                val leagueEntry1 = scores[agent1.getAgentType()]!!
-                val leagueEntry2 = scores[agent2.getAgentType()]!!
+                val leagueEntry1 = scores[type1]!!
+                val leagueEntry2 = scores[type2]!!
                 leagueEntry1.points += result.first[Player.Player1]!!
                 leagueEntry2.points += result.first[Player.Player2]!!
                 leagueEntry1.avgActionTime += result.second[Player.Player1]!!
