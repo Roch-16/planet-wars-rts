@@ -58,7 +58,13 @@ def to_agent_commit_entry(agent: AgentEntry) -> AgentCommitEntry:
 
     # Determine commit hash
     if agent.commit:
-        commit = agent.commit.strip()
+        # Strip inline YAML-style comments (e.g. "abc123# optional" or "abc123 # optional").
+        # YAML only treats '#' as a comment when preceded by whitespace, so submitters who
+        # write "abc123# optional" (no space) get the full string as the value. Extract
+        # only the leading hex characters so we always store a clean commit hash.
+        raw = agent.commit.strip()
+        hex_match = re.match(r'^([a-f0-9]+)', raw)
+        commit = hex_match.group(1) if hex_match else raw
     else:
         commit_match = re.search(r"/commits?/([a-f0-9]{7,40})", agent.repo_url)
         if not commit_match:
