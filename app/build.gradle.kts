@@ -43,6 +43,9 @@ dependencies {
 
     // Additional Libraries
     implementation("com.google.guava:guava:32.1.2-jre")
+
+    // Source: https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+    implementation("org.slf4j:slf4j-simple:2.0.17")
 }
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
@@ -94,4 +97,11 @@ tasks.register<JavaExec>("runRemotePairEvaluation") {
     // Support `--args=portA,portB,gpp,timeout` (comes in as a project property)
     val raw = project.findProperty("args")?.toString()
     args = if (raw != null) listOf(raw) else listOf("5001,5002,10,50")
+}
+
+//run visual
+tasks.register<JavaExec>("runVisual") {
+    mainClass.set("games.planetwars.view.RunVisualGameKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    standardInput = System.`in`
 }

@@ -1,5 +1,5 @@
 # ---------- Stage 1: Build with Gradle ----------
-FROM gradle:8.5.0-jdk20 AS builder
+FROM gradle:8.5.0-jdk21 AS builder
 
 # Set working directory inside build container
 WORKDIR /home/gradle/project
@@ -11,7 +11,7 @@ COPY . .
 RUN gradle :app:build -x test
 
 # ---------- Stage 2: Runtime with Java only ----------
-FROM eclipse-temurin:20-jdk
+FROM eclipse-temurin:21-jdk
 
 # Set working directory in runtime container
 WORKDIR /app

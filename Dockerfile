@@ -2,7 +2,7 @@
 
 # Use Java 20 instead of Java 17
 # This was too brittle: FROM eclipse-temurin:20-jdk
-FROM docker.io/library/eclipse-temurin:20-jdk
+FROM docker.io/library/eclipse-temurin:21-jdk
 
 # Set working directory inside the container
 WORKDIR /app
