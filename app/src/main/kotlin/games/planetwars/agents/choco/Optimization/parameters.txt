@@ -1,0 +1,9 @@
+attackShipsFraction    "" r (0.2, 0.8)
+topTargetsPerSource    "" i (1, 8)
+minDefenseShips        "" r (1.0, 15.0)
+
+territoryWeight        "" r (1.0, 30.0)
+shipDiffDivisor        "" r (5.0, 20.0)
+
+earlyGrowthWeight      "" r (1.0, 5.0)
+lateGrowthWeight       "" r (0.5, 3.0)

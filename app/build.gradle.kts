@@ -89,6 +89,13 @@ tasks.register<JavaExec>("runUnifiedExample") {
     classpath = sourceSets["main"].runtimeClasspath
     standardInput = System.`in`
 }
+tasks.register<JavaExec>("runChocoIrace") {
+    mainClass.set("games.planetwars.agents.choco.Optimization.IRaceEvaluatorKt")
+    classpath = sourceSets["main"].runtimeClasspath
+
+    val raw = project.findProperty("args")?.toString()
+    args = if (raw != null) listOf(raw) else emptyList()
+}
 tasks.register<JavaExec>("runRemotePairEvaluation") {
     // Kotlin entry point above
     mainClass.set("games.planetwars.runners.RunRemotePairEvaluationKt")

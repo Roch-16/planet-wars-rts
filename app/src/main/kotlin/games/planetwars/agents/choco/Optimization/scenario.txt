@@ -1,0 +1,8 @@
+targetRunner = "target-runner.bat"
+parameterFile = "parameters.txt"
+trainInstancesFile = "instances.txt"
+
+maxExperiments = 500
+parallel = 2
+
+logFile = "irace.log"

@@ -6,13 +6,14 @@ import games.planetwars.agents.evo.SimpleEvoAgent
 import games.planetwars.core.GameParams
 import games.planetwars.runners.GameRunner
 import games.planetwars.core.GameStateFactory
+import games.planetwars.core.GameParamGenerator
 import xkg.jvm.AppLauncher
 //mine
 import games.planetwars.agents.choco.ChocoAgent
 
 
 fun main() {
-    val gameParams = GameParams(numPlanets = 30, maxTicks = 1000)
+    val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val gameState = GameStateFactory(gameParams).createGame()
     val agent1 = ChocoAgent()//CarefulRandomAgent()
     val agent2 = BetterRandomAgent()
@@ -26,6 +27,6 @@ fun main() {
         preferredHeight = gameParams.height,
         app = GameView(params = gameParams, gameState = gameState, gameRunner = gameRunner),
         title = title,
-        frameRate = 100.0,
+        frameRate = 20.0,
     ).launch()
 }
