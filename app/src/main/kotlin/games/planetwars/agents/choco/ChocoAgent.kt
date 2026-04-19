@@ -4,13 +4,13 @@ import games.planetwars.agents.Action
 import games.planetwars.agents.PlanetWarsPlayer
 import games.planetwars.core.GameState
 
-class TryAgent(val mctsParams: MCTSParams = MCTSParams()) : PlanetWarsPlayer()
+class ChocoAgent(val mctsParams: MCTSParams = MCTSParams()) : PlanetWarsPlayer()
 {
     private val mcts = MonteCarloTreeSearch(mctsParams)
 
     override fun getAgentType() : String
     {
-        return "TryAgent - MCTS"
+        return "ChocoAgent - MCTS"
     }
 
     override fun getAction(gameState : GameState): Action

@@ -8,13 +8,13 @@ import games.planetwars.runners.GameRunner
 import games.planetwars.core.GameStateFactory
 import xkg.jvm.AppLauncher
 //mine
-import games.planetwars.agents.choco.TryAgent
+import games.planetwars.agents.choco.ChocoAgent
 
 
 fun main() {
     val gameParams = GameParams(numPlanets = 30, maxTicks = 1000)
     val gameState = GameStateFactory(gameParams).createGame()
-    val agent1 = TryAgent()//CarefulRandomAgent()
+    val agent1 = ChocoAgent()//CarefulRandomAgent()
     val agent2 = BetterRandomAgent()
     // sub in different agents as needed
 //    val agent1 = PureRandomAgent()

@@ -4,7 +4,7 @@ import games.planetwars.agents.UnifiedPlanetWarsAgent
 import games.planetwars.agents.asUnified
 import games.planetwars.agents.random.BetterRandomAgent
 import games.planetwars.agents.random.PureRandomAgent
-import games.planetwars.agents.choco.TryAgent
+import games.planetwars.agents.choco.ChocoAgent
 import games.planetwars.core.*
 
 /**
@@ -147,7 +147,7 @@ fun main() {
     val nGames = 100  // Number of games for performance test
 
     // Wrap existing agents using the unified interface
-    val agent1 = TryAgent().asUnified()
+    val agent1 = ChocoAgent().asUnified()
     val agent2 = BetterRandomAgent().asUnified()
 
     println("=== Testing Fully Observable Mode ===")

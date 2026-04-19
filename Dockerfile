@@ -15,3 +15,4 @@ EXPOSE 8080
 
 # Run the Kotlin server
 CMD ["java", "-jar", "app.jar"]
+
