@@ -7,6 +7,7 @@ import games.planetwars.core.GameParams
 import games.planetwars.runners.GameRunner
 import games.planetwars.core.GameStateFactory
 import games.planetwars.core.GameParamGenerator
+import competition_entry.GreedyHeuristicAgent
 import xkg.jvm.AppLauncher
 //mine
 import games.planetwars.agents.choco.ChocoAgent
@@ -16,7 +17,7 @@ fun main() {
     val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val gameState = GameStateFactory(gameParams).createGame()
     val agent1 = ChocoAgent()//CarefulRandomAgent()
-    val agent2 = BetterRandomAgent()
+    val agent2 = GreedyHeuristicAgent()
     // sub in different agents as needed
 //    val agent1 = PureRandomAgent()
     val gameRunner = GameRunner(agent1, agent2, gameParams)

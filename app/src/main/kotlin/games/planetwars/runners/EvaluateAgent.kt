@@ -7,6 +7,7 @@ import games.planetwars.agents.evo.SimpleEvoAgent
 import games.planetwars.agents.random.BetterRandomAgent
 import games.planetwars.agents.random.CarefulRandomAgent
 import games.planetwars.core.GameParams
+import games.planetwars.core.GameParamGenerator
 import json_rmi.SimpleAgent
 import java.io.File
 
@@ -49,7 +50,7 @@ fun main(args: Array<String>) {
     // higher values give more accurate results, at the cost of time
     val gamesPerPair = 3
 
-    val gameParams = GameParams(numPlanets = 20, maxTicks = 1000)
+    val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val baselineAgents = SamplePlayerLists().getRandomTrio()
     baselineAgents.clear()
     // baselineAgents.add(BetterRandomAgent())  // Removed to reduce sanity check time

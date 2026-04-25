@@ -29,6 +29,8 @@ interface MCTSState {
     
     /** Genera todas las acciones posibles para el jugador desde este estado */
     fun getActions(playerId: Player): List<Action>
+
+    fun stateQuickEval(playerId: Player): Double
 }
 
 // Esqueleto del código obtenido de: https://github.com/cucer-castellano/monte-carlo-tree-search.git
@@ -74,7 +76,7 @@ class MonteCarloTreeSearch(val mcts: MCTSParams = MCTSParams()) {
                     break  // Salir para proceder a simulación desde este nodo nuevo
                 } else {
                     // Todas las acciones exploradas: seleccionar hijo usando UCB1
-                    node = node.selectChild()  // Balanceo explotación/exploración
+                    node = node.selectChild(mcts)  // Balanceo explotación/exploración
                     tempState = node.state
                 }
             }
@@ -187,19 +189,41 @@ class MCTSNode(val state: MCTSState, val playerId: Player, val parent: MCTSNode?
      *   - exploration = sqrt(2*ln(parentVisits)/childVisits) (bonus a no visitados)
      * @return: El hijo que maximiza UCB1
      */
-    fun selectChild(): MCTSNode {
-        val parentVisits = visits.coerceAtLeast(1)
+    fun selectChild(params: MCTSParams): MCTSNode {
+    val parentVisits = visits.coerceAtLeast(1)
 
-        return children.maxByOrNull { child ->
-            if (child.visits == 0) {
-                // Niños sin visitar tienen máxima prioridad (exploración)
-                Double.POSITIVE_INFINITY
-            } else {
-                // UCB1 = promedio_ganancias + bonus_exploración
-                val exploitation = child.wins / child.visits
-                val exploration = Math.sqrt(2.0 * Math.log(parentVisits.toDouble()) / child.visits)
-                exploitation + exploration
-            }
-        }!!
-    }
+    val wrapper = state as? GameStateWrapper
+
+    val progress = if (wrapper != null && wrapper.params.maxTicks > 0) {
+        wrapper.gameState.gameTick.toDouble() / wrapper.params.maxTicks
+    } else 0.5
+
+    val myPlayer = playerId
+    val opponent = playerId.opponent()
+
+    // Evaluación rápida (lightweight)
+    val myScore = state.stateQuickEval(myPlayer)
+    val oppScore = state.stateQuickEval(opponent)
+
+    val leadFactor = (myScore - oppScore).coerceIn(-1.0, 1.0)
+
+    // === UCT dinámico ===
+    val dynamicC = (
+        params.explorationConstant *
+        (1.0 - progress) *
+        (1.0 - 0.5 * leadFactor)
+    ).coerceIn(0.1, 2.5)
+
+    return children.maxByOrNull { child ->
+        if (child.visits == 0) {
+            Double.POSITIVE_INFINITY
+        } else {
+            val exploitation = child.wins / child.visits
+            val exploration = Math.sqrt(
+                Math.log(parentVisits.toDouble()) / child.visits
+            )
+            exploitation + dynamicC * exploration
+        }
+    }!!
+}
 }

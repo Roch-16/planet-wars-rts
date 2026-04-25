@@ -184,9 +184,9 @@ data class GameStateWrapper(
      *   Si un planeta está en peligro (naves enemigas en tránsito > naves propias),
      *   genera acciones defensivas para envisar refuerzos desde planetas cercanos.
      * 
-     * FASE 2 - ATAQUE:
-     *   Desde planetas seguros (que no defienden), genera acciones ofensivas
-     *   hacia los mejores objetivos (puntuación = bonus de dueño * growthRate / distancia)
+    * FASE 2 - ATAQUE:
+    *   Desde cualquier planeta propio, genera acciones ofensivas
+    *   incluso si también está siendo defendido
      * 
      * Límite: Como máximo MAX_ACTIONS_PER_STATE (24) acciones para no explotar búsqueda
      */
@@ -206,27 +206,29 @@ data class GameStateWrapper(
         }
         
         // ========== FASE 2: OFENSA ==========
-        // Generar acciones ofensivas desde planetas seguros (no en peligro)
-        val planetsToAttack = myPlanets.filter { !dangerPlanets.contains(it) }
-        for (source in planetsToAttack) {
+        for (source in myPlanets) {
             // Seleccionar solo los mejores objetivos para no explotar el árbol
             val rankedTargets = otherPlanets
-                .sortedByDescending { targetScore(source, it, playerId) }
+                .map { target ->
+                    val baseScore = targetScore(source, target, playerId)
+
+                    val distance = source.position.distance(target.position)
+                    val shipsToSend = source.nShips * mcts.attackShipsFraction
+                    val expectedDefense = target.nShips + target.growthRate * distance
+
+                    val riskPenalty = if (shipsToSend < expectedDefense) 0.5 else 1.0
+
+                    target to (baseScore * riskPenalty)
+                }
+                .sortedByDescending { it.second }
                 .take(mcts.topTargetsPerSource)
+                .map { it.first }
 
             for (target in rankedTargets) {
-                // Validar que el ataque sea efectivo (ganancia esperada > costo)
-                if (!isAttackViable(source, target)) continue
-
-                // Enviar fracción configurable de naves (reservar defensa local)
-                val shipsToSend = (source.nShips * mcts.attackShipsFraction).coerceAtLeast(1.0)
-
-                actions.add(
-                    Action(playerId, source.id, target.id, shipsToSend)
-                )
+                attackPlanet(source, target, playerId)?.let { actions.add(it) }
             }
         }
-        
+
         // Acción de defensa: siempre incluir "no hacer nada"
         if (actions.isEmpty()) {
             actions.add(Action.doNothing())
@@ -357,5 +359,31 @@ data class GameStateWrapper(
         }
 
         return defenseActions
+    }
+
+    private fun attackPlanet(source: Planet, target: Planet, playerId: Player): Action? {
+        val distance = source.position.distance(target.position)
+        val shipsToSend = (source.nShips * mcts.attackShipsFraction).coerceAtLeast(1.0)
+        val expectedDefense = target.nShips + target.growthRate * distance
+
+        val viable = shipsToSend > expectedDefense
+
+        // Permitir exploración incluso si no es viable
+        if (!viable && Math.random() > 0.3) return null
+
+        return Action(playerId, source.id, target.id, shipsToSend)
+    }
+    override fun stateQuickEval(playerId: Player): Double {
+        val opponent = playerId.opponent()
+
+        val myShips = gameState.planets
+            .filter { it.owner == playerId }
+            .sumOf { it.nShips }
+
+        val oppShips = gameState.planets
+            .filter { it.owner == opponent }
+            .sumOf { it.nShips }
+
+        return (myShips - oppShips) / 100.0
     }
 }
