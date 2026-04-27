@@ -384,6 +384,17 @@ data class GameStateWrapper(
             .filter { it.owner == opponent }
             .sumOf { it.nShips }
 
-        return (myShips - oppShips) / 100.0
+        val myGrowth = gameState.planets
+            .filter { it.owner == playerId }
+            .sumOf { it.growthRate }
+
+        val oppGrowth = gameState.planets
+            .filter { it.owner == opponent }
+            .sumOf { it.growthRate }
+
+        val shipScore = (myShips - oppShips) / 100.0
+        val growthScore = (myGrowth - oppGrowth) * 2.0
+
+        return shipScore + growthScore
     }
 }
