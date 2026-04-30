@@ -4,13 +4,14 @@ import games.planetwars.agents.choco.ChocoAgent
 import games.planetwars.agents.choco.MCTSParams
 import games.planetwars.agents.random.BetterRandomAgent
 import competition_entry.GreedyHeuristicAgent
+import games.planetwars.agents.evo.SimpleEvoAgent
 import games.planetwars.core.GameParamGenerator
 import games.planetwars.core.GameParams
 import games.planetwars.core.Player
 import games.planetwars.runners.GameRunner
 import java.util.Locale
 
-private const val DEFAULT_GAMES = 100
+private const val DEFAULT_GAMES = 50
 
 private data class EvalParams(
     val attackFraction: Double,
@@ -90,8 +91,9 @@ fun main(args: Array<String>) {
         ownTargetBonus = parsed.ownTargetBonus,
     )
     val opponents = listOf(
-        BetterRandomAgent(),
-        GreedyHeuristicAgent()
+        //BetterRandomAgent(),
+        GreedyHeuristicAgent(),
+        SimpleEvoAgent()
     )
 
     var totalWins = 0

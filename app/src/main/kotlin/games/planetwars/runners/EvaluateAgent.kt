@@ -48,15 +48,15 @@ fun main(args: Array<String>) {
 
     // number of games to play between each pair of agents -
     // higher values give more accurate results, at the cost of time
-    val gamesPerPair = 3
+    val gamesPerPair = 25
 
     val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val baselineAgents = SamplePlayerLists().getRandomTrio()
     baselineAgents.clear()
     // baselineAgents.add(BetterRandomAgent())  // Removed to reduce sanity check time
-    baselineAgents.add(CarefulRandomAgent())
+    //baselineAgents.add(CarefulRandomAgent())
     baselineAgents.add(GreedyHeuristicAgent())
-//    baselineAgents.add(SimpleEvoAgent())
+    baselineAgents.add(SimpleEvoAgent())
     val remoteAgent = RemoteAgent("<unused - name retrieved from remoteAgent>", port = remotePort)
     val testAgentName = waitForAgentType(remoteAgent)
     val results = mutableListOf<Triple<String, Double, Int>>()
