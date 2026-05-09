@@ -26,16 +26,17 @@ private data class EvalParams(
     val enemyTargetBonus: Double,
     val neutralTargetBonus: Double,
     val ownTargetBonus: Double,
+    val biasWeight: Double,
 )
 
 private fun parseArgs(args: Array<String>): EvalParams? {
     val values = when {
         args.size == 1 -> args[0].split(',').map { it.trim() }
-        args.size == 12 -> args.toList().map { it.trim() }
+        args.size == 13 -> args.toList().map { it.trim() }
         else -> return null
     }
 
-    if (values.size != 12) {
+    if (values.size != 13) {
         return null
     }
 
@@ -51,6 +52,7 @@ private fun parseArgs(args: Array<String>): EvalParams? {
     val enemyTargetBonus = values[9].toDoubleOrNull() ?: return null
     val neutralTargetBonus = values[10].toDoubleOrNull() ?: return null
     val ownTargetBonus = values[11].toDoubleOrNull() ?: return null
+    val biasWeight = values[12].toDoubleOrNull() ?: return null
 
     return EvalParams(
         attackFraction = attackFraction,
@@ -65,6 +67,7 @@ private fun parseArgs(args: Array<String>): EvalParams? {
         enemyTargetBonus = enemyTargetBonus,
         neutralTargetBonus = neutralTargetBonus,
         ownTargetBonus = ownTargetBonus,
+        biasWeight = biasWeight,
     )
 }
 
@@ -89,6 +92,7 @@ fun main(args: Array<String>) {
         enemyTargetBonus = parsed.enemyTargetBonus,
         neutralTargetBonus = parsed.neutralTargetBonus,
         ownTargetBonus = parsed.ownTargetBonus,
+        biasWeight = parsed.biasWeight,
     )
     val opponents = listOf(
         //BetterRandomAgent(),

@@ -159,40 +159,45 @@ class MCTSNode(val state: MCTSState, val playerId: Player, val parent: MCTSNode?
      * y la ventaja heurística estimada entre ambos jugadores.
      */
     fun selectChild(params: MCTSParams): MCTSNode {
-    val parentVisits = visits.coerceAtLeast(1)
+        val parentVisits = visits.coerceAtLeast(1)
 
-    val wrapper = state as? GameStateWrapper
+        val wrapper = state as? GameStateWrapper
 
-    val progress = if (wrapper != null && wrapper.params.maxTicks > 0) {
-        wrapper.gameState.gameTick.toDouble() / wrapper.params.maxTicks
-    } else 0.5
+        val progress = if (wrapper != null && wrapper.params.maxTicks > 0) {
+            wrapper.gameState.gameTick.toDouble() / wrapper.params.maxTicks
+        } else 0.5
 
-    val myPlayer = playerId
-    val opponent = playerId.opponent()
+        val myPlayer = playerId
 
-    // Evaluación rápida para ajustar la exploración de forma dinámica.
-    val myScore = state.stateQuickEval(myPlayer)
-    val oppScore = state.stateQuickEval(opponent)
+        // UCT dinámico.
+        val dynamicC = (
+            params.explorationConstant *
+            (1.0 - progress) *
+            (1.0 - 0.5 * cachedLeadFactor) // Ajusta la exploración según la ventaja heurística
+        ).coerceIn(0.1, 2.5)
 
-    val leadFactor = (myScore - oppScore).coerceIn(-1.0, 1.0)
+        return children.maxByOrNull { child ->
+            if (child.visits == 0) {
+                Double.POSITIVE_INFINITY
+            } else {
+                val exploitation = child.wins / child.visits
+                val exploration = Math.sqrt(
+                    Math.log(parentVisits.toDouble()) / child.visits
+                )
+                val progressiveBias = if (wrapper != null && child.action != null) {
+                    params.biasWeight * wrapper.actionHeuristic(child.action!!, myPlayer) / (child.visits + 1.0)
+                } else {
+                    0.0
+                }
 
-    // UCT dinámico.
-    val dynamicC = (
-        params.explorationConstant *
-        (1.0 - progress) *
-        (1.0 - 0.5 * leadFactor)
-    ).coerceIn(0.1, 2.5)
+                exploitation + dynamicC * exploration + progressiveBias
+            }
+        }!!
+    }
 
-    return children.maxByOrNull { child ->
-        if (child.visits == 0) {
-            Double.POSITIVE_INFINITY
-        } else {
-            val exploitation = child.wins / child.visits
-            val exploration = Math.sqrt(
-                Math.log(parentVisits.toDouble()) / child.visits
-            )
-            exploitation + dynamicC * exploration
-        }
-    }!!
-}
+    private val cachedLeadFactor: Double by lazy {
+        val my = state.stateQuickEval(playerId)
+        val opp = state.stateQuickEval(playerId.opponent())
+        (my - opp).coerceIn(-1.0, 1.0)
+    }
 }

@@ -13,11 +13,12 @@ set ltransit=0.8
 set enemybonus=2.0
 set neutralbonus=1.0
 set ownbonus=0.1
+set bias=0.3
 
 REM Support both styles:
-REM 1) Manual positional: 12 raw values
+REM 1) Manual positional: 13 raw values
 REM 2) iRace style: ... --param value (with optional control args before params)
-if not "%~12"=="" if "%~13"=="" (
+if not "%~13"=="" if "%~14"=="" (
 	set attack=%1
 	set targets=%2
 	set defense=%3
@@ -30,6 +31,7 @@ if not "%~12"=="" if "%~13"=="" (
 	set enemybonus=%~10
 	set neutralbonus=%~11
 	set ownbonus=%~12
+	set bias=%~13
 ) else (
 	:parse_args
 	if "%~1"=="" goto done_parse
@@ -106,6 +108,12 @@ if not "%~12"=="" if "%~13"=="" (
 		shift
 		goto parse_args
 	)
+	if /I "%~1"=="--biasWeight" (
+		set bias=%~2
+		shift
+		shift
+		goto parse_args
+	)
 
 	for /f "tokens=1,2 delims==" %%A in ("%~1") do (
 		if /I "%%~A"=="--attackShipsFraction" set attack=%%~B
@@ -120,6 +128,7 @@ if not "%~12"=="" if "%~13"=="" (
 		if /I "%%~A"=="--enemyTargetBonus" set enemybonus=%%~B
 		if /I "%%~A"=="--neutralTargetBonus" set neutralbonus=%%~B
 		if /I "%%~A"=="--ownTargetBonus" set ownbonus=%%~B
+		if /I "%%~A"=="--biasWeight" set bias=%%~B
 	)
 
 	shift
@@ -131,7 +140,7 @@ if not "%~12"=="" if "%~13"=="" (
 set ROOT_DIR=%~dp0..\..\..\..\..\..\..\..\..
 for %%I in ("%ROOT_DIR%") do set ROOT_DIR=%%~fI
 
-set ARGS=%attack%,%targets%,%defense%,%territory%,%shipdiff%,%egrowth%,%lgrowth%,%etransit%,%ltransit%,%enemybonus%,%neutralbonus%,%ownbonus%
+set ARGS=%attack%,%targets%,%defense%,%territory%,%shipdiff%,%egrowth%,%lgrowth%,%etransit%,%ltransit%,%enemybonus%,%neutralbonus%,%ownbonus%,%bias%
 set SCORE=
 
 for /f "delims=" %%S in ('call "%ROOT_DIR%\gradlew.bat" -q :app:runChocoIrace --args="%ARGS%" 2^>nul ^| findstr /R "^[0-9][0-9]*\.[0-9][0-9]*$"') do set SCORE=%%S

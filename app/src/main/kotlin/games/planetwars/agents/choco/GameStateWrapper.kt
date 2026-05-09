@@ -193,6 +193,7 @@ data class GameStateWrapper(
      */
     private fun targetScore(source: Planet, target: Planet, playerId: Player): Double {
         val distance = source.position.distance(target.position)
+        val shipsToSend = (source.nShips * mcts.attackShipsFraction).coerceAtLeast(1.0)
 
         val ownershipBonus = when (target.owner) {
             playerId.opponent() -> mcts.enemyTargetBonus    // Atacar enemigos es prioridad
@@ -200,7 +201,36 @@ data class GameStateWrapper(
             else -> mcts.ownTargetBonus                     // Evitar atacar los propios
         }
 
-        return ownershipBonus * target.growthRate / (distance + 1.0)   
+        // Defensa esperada cuando llegue nuestro ataque.
+        val expectedDefense = when (target.owner) {
+            Player.Neutral -> target.nShips
+            else -> target.nShips + target.growthRate * distance
+        }
+
+        // Viabilidad: premia ataques con superioridad y castiga los claramente inviables.
+        val viabilityRatio = shipsToSend / (expectedDefense + 1.0)
+        val viabilityFactor = viabilityRatio.coerceIn(0.35, 1.6)
+
+        // Penaliza sobrecargar un objetivo que ya recibe refuerzos/ataques propios.
+        val incomingFriendlyShips = gameState.planets
+            .mapNotNull { it.transporter }
+            .filter { it.owner == playerId && it.destinationIndex == target.id }
+            .sumOf { it.nShips }
+        val redundancyFactor = 1.0 / (1.0 + incomingFriendlyShips / (expectedDefense + 1.0))
+
+        // En late-game aumenta la urgencia de expansión/ataque territorial.
+        val ticksRemaining = (params.maxTicks - gameState.gameTick).coerceAtLeast(0)
+        val urgency = if (params.maxTicks > 0) {
+            1.0 - (ticksRemaining.toDouble() / params.maxTicks.toDouble())
+        } else {
+            0.0
+        }
+        val urgencyBoost = when (target.owner) {
+            playerId -> 1.0
+            else -> 1.0 + 0.5 * urgency
+        }
+
+        return ownershipBonus * target.growthRate * viabilityFactor * redundancyFactor * urgencyBoost / (distance + 1.0)
     }
 
     /** Indica si un ataque supera la defensa estimada del objetivo. */
@@ -302,4 +332,37 @@ data class GameStateWrapper(
 
         return shipScore + growthScore
     }
+    /**
+     * Heurística de acción para progressive bias.
+     * Reutiliza targetScore (calidad del objetivo) y lo extiende con rasgos de la acción concreta.
+     */
+    fun actionHeuristic(action: Action, playerId: Player): Double {
+    if (action == Action.DO_NOTHING) return 0.05
+    if (action.sourcePlanetId !in gameState.planets.indices) return 0.0
+    if (action.destinationPlanetId !in gameState.planets.indices) return 0.0
+
+    val source = gameState.planets[action.sourcePlanetId]
+    val target = gameState.planets[action.destinationPlanetId]
+
+    if (source.owner != playerId) return 0.0
+    if (action.numShips <= 0.0) return 0.0
+
+    // Base estratégica — ya incluye viabilidad, urgencia y redundancia.
+    val baseTarget = targetScore(source, target, playerId)
+
+    // Factibilidad suave (mejora tuya corregida).
+    val feasibilityFactor = if (action.numShips <= source.nShips) {
+        1.0
+    } else {
+        (source.nShips / action.numShips).coerceAtLeast(0.1)
+    }
+
+    // Señal defensiva — única señal nueva que no duplica targetScore.
+    val defensiveBoost = if (target.owner == playerId && isPlanetInDanger(target, playerId)) {
+        val distance = source.position.distance(target.position)
+        1.5 / (distance + 1.0)
+    } else 0.0
+
+    return ((baseTarget + defensiveBoost) * feasibilityFactor).coerceAtLeast(0.0)
+}
 }
