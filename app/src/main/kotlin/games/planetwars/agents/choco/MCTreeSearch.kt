@@ -1,6 +1,5 @@
 package games.planetwars.agents.choco
 
-import java.util.Random
 import games.planetwars.core.GameState
 import games.planetwars.core.Player
 import games.planetwars.core.GameParams
@@ -10,50 +9,48 @@ import games.planetwars.agents.PlanetWarsPlayer
 
 
 /**
- * Interfaz genérica para MCTS (Monte Carlo Tree Search)
- * Define las operaciones que cualquier estado del juego debe soportar para ser compatible con MCTS.
- * Permite que el árbol de búsqueda explore diferentes estados del juego de forma uniforme.
+ * Interfaz mínima que un estado debe implementar para poder participar en MCTS.
+ *
+ * El árbol solo depende de estas operaciones para expandir, simular y evaluar
+ * estados sin acoplarse al motor concreto del juego.
  */
 interface MCTSState {
-    /** Verifica si el juego ha terminado (terminal o victoria/derrota alcanzada) */
+    /** Indica si no deben explorarse más acciones desde este estado. */
     fun isTerminal(): Boolean
     
-    /** Evalúa la calidad de un estado para el jugador dado (heurística de evaluación) */
+    /** Devuelve una evaluación del estado desde la perspectiva del jugador indicado. */
     fun getResult(playerId: Player): Double  
     
-    /** Simula una acción concreta y retorna el estado resultante */
+    /** Aplica una acción concreta y retorna el estado resultante. */
     fun takeAction(action: Action): MCTSState
     
-    /** Simula una acción aleatoria (usada en la fase de rollout/simulación) */
+    /** Avanza el estado con una acción aleatoria para la fase de rollout. */
     fun takeRandomAction(): MCTSState
     
-    /** Genera todas las acciones posibles para el jugador desde este estado */
+    /** Genera las acciones disponibles para el jugador indicado. */
     fun getActions(playerId: Player): List<Action>
 
+    /** Evaluación rápida heurística para ajustar la exploración durante la selección. */
+    /** propia implementación */
     fun stateQuickEval(playerId: Player): Double
 }
 
 // Esqueleto del código obtenido de: https://github.com/cucer-castellano/monte-carlo-tree-search.git
 
 /**
- * MonteCarloTreeSearch: Motor de búsqueda de acciones óptimas
- * 
- * Algoritmo MCTS en 4 fases:
- * 1. SELECCIÓN: Navega por el árbol existente usando UCB1 (Upper Confidence Bound)
- * 2. EXPANSIÓN: Agrega un nodo hijo con una acción no probada
- * 3. SIMULACIÓN (Rollout): Desde el nuevo nodo, simula aleatoriamente hasta estado terminal
- * 4. BACKPROPAGACIÓN: Propaga el resultado hacia la raíz para actualizar estadísticas
- * 
- * Tras MAX_ITERATIONS o TIME_BUDGET_MS, retorna la acción con mejor ratio ganancia/intentos
+ * Motor de búsqueda MCTS para seleccionar acciones en Planet Wars.
+ *
+ * El ciclo sigue las fases clásicas:
+ * 1. Selección: desciende por el árbol usando UCT dinámico.
+ * 2. Expansión: crea un hijo con una acción aún no explorada.
+ * 3. Rollout: simula jugadas aleatorias hasta terminar o agotar profundidad.
+ * 4. Backpropagation: propaga el resultado hacia la raíz.
+ *
+ * Al final devuelve la acción del hijo más visitado en la raíz.
  */
 class MonteCarloTreeSearch(val mcts: MCTSParams = MCTSParams()) {
 
-    /**
-     * run: Ejecuta el algoritmo MCTS para encontrar la mejor acción
-     * @param initialState: Estado actual del juego
-     * @param playerId: Jugador para el que optimizamos
-     * @return: La acción más prometedora encontrada en la búsqueda
-     */
+    /** Ejecuta MCTS sobre el estado inicial y devuelve la acción recomendada. */
     fun run(initialState: GameStateWrapper, playerId: Player): Action {
         val root = MCTSNode(initialState, playerId)
         val deadlineNanos = System.nanoTime() + mcts.timeBudgetMs * 1_000_000L
@@ -65,129 +62,101 @@ class MonteCarloTreeSearch(val mcts: MCTSParams = MCTSParams()) {
             var node = root
             var tempState: MCTSState = initialState
 
-            // === FASE 1: SELECCIÓN + EXPANSIÓN ===
-            // Navega por el árbol hasta una hoja, o expande con una acción no probada
+            // Selección + expansión: baja por el árbol hasta encontrar un nodo expandable.
             while (!tempState.isTerminal()) {
                 if (node.hasUntriedActions()) {
-                    // Hay acciones no exploradas: crear nuevo nodo hijo
+                    // Todavía quedan acciones sin explorar: expandir un nuevo hijo.
                     val action = node.getUntriedAction()
                     tempState = tempState.takeAction(action)
                     node = node.addChild(tempState, action)
-                    break  // Salir para proceder a simulación desde este nodo nuevo
+                    break
                 } else {
-                    // Todas las acciones exploradas: seleccionar hijo usando UCB1
-                    node = node.selectChild(mcts)  // Balanceo explotación/exploración
+                    // Todas las acciones exploradas: seguir con UCT dinámico.
+                    node = node.selectChild(mcts)
                     tempState = node.state
                 }
             }
 
-            // === FASE 2: SIMULACIÓN (Rollout) ===
-            // Simular acciones aleatorias hasta terminal o profundidad máxima
+            // Rollout: simular acciones aleatorias hasta terminal o profundidad límite.
             var rolloutDepth = 0
             while (!tempState.isTerminal() && rolloutDepth < mcts.maxRolloutDepth) {
                 tempState = tempState.takeRandomAction()
                 rolloutDepth++
             }
 
-            // === FASE 3: BACKPROPAGACIÓN ===
-            // Propagar resultado desde hoja hacia raíz, actualizando estadísticas
+            // Backpropagation: actualizar estadísticas desde la hoja hasta la raíz.
             val result = tempState.getResult(playerId)
             node.backpropagate(result)
         }
 
-        // === SELECCIÓN FINAL ===
-        // Retornar la acción más visitada (mejor promedio empírico)
+        // Selección final: usar el hijo más visitado como acción recomendada.
         return if (root.children.isNotEmpty()) {
             root.getBestChild().action ?: Action.doNothing()
         } else {
-            Action.doNothing()  // Sin acciones exploradas: hacer nada
+            Action.doNothing()
         }
     }
 }
 
 /**
- * MCTSNode: Nodo del árbol de búsqueda MCTS
- * 
- * Representa un estado del juego y mantiene estadísticas sobre su valor.
- * Cada nodo almacena:
- * - state: El estado del juego en este nodo
- * - playerId: Jugador que optimizamos
- * - parent: Referencia al nodo padre (para backpropagación)
- * - children: Lista de nodos hijos (acciones ya exploradas)
- * - untriedActions: Acciones pendientes de explorar desde este estado
- * - wins/visits: Estadísticas para calcular valor medio (wins/visits)
+ * Nodo del árbol MCTS.
+ *
+ * Guarda el estado, la acción que lo generó y las estadísticas acumuladas
+ * para calcular la preferencia de cada rama durante la búsqueda.
  */
 class MCTSNode(val state: MCTSState, val playerId: Player, val parent: MCTSNode? = null) {
     
-    /** Lista de nodos hijos (estados futuros explorados) */
+    /** Hijos ya explorados desde este nodo. */
     public val children = mutableListOf<MCTSNode>()
     
-    /** Acciones que aún no hemos explorado desde este nodo */
+    /** Acciones que todavía no se han expandido desde este nodo. */
     private val untriedActions = state.getActions(playerId).toMutableList()
     
-    /** Suma acumulada de resultados (para calcular promedio) */
+    /** Suma acumulada de resultados de las simulaciones. */
     private var wins = 0.0
     
-    /** Número de veces que se visitó este nodo */
+    /** Número de visitas acumuladas. */
     private var visits = 0
     
-    /** La acción que llevó a este estado desde su padre */
+    /** Acción que llevó al estado actual desde el padre. */
     var action: Action? = null
 
-    /**
-     * addChild: Crea y agrega un nodo hijo
-     * @param state: Nuevo estado del juego tras la acción
-     * @param action: Acción que lleva a este nuevo estado
-     * @return: El nuevo nodo hijo creado
-     */
+    /** Crea y agrega un nodo hijo para el estado alcanzado por una acción. */
     fun addChild(state: MCTSState, action: Action): MCTSNode {
         val child = MCTSNode(state, playerId, parent = this)
         child.action = action
         children.add(child)
-        untriedActions.remove(action)  // Marcar acción como explorada
+        untriedActions.remove(action)
         return child
     }
 
-    /**
-     * backpropagate: Propaga el resultado desde este nodo hacia la raíz
-     * Actualiza visits y wins en todos los ancestros
-     * @param result: Valor de retorno del rollout (heurística de evaluación)
-     */
+    /** Propaga el resultado de un rollout hasta la raíz. */
     fun backpropagate(result: Double) {
         var node: MCTSNode? = this
 
         while (node != null) {
-            node.visits++      // Incrementar visitas de este nodo
-            node.wins += result  // Acumular valor de resultado
-            node = node.parent  // Continuar hacia arriba
+            node.visits++
+            node.wins += result
+            node = node.parent
         }
     }
 
-    /** true si aún existen acciones no exploradas desde este nodo */
+    /** True si todavía quedan acciones por explorar. */
     fun hasUntriedActions(): Boolean = untriedActions.isNotEmpty()
     
-    /**
-     * getUntriedAction: Extrae aleatoriamente una acción no probada
-     * @return: Una acción seleccionada al azar de las no exploradas
-     */
-    fun getUntriedAction(): Action =  untriedActions.removeAt(Random().nextInt(untriedActions.size))
+    /** Extrae la siguiente acción aún no expandida, priorizando la mejor puntuada. */
+    fun getUntriedAction(): Action = untriedActions.removeAt(0)
     
-    /**
-     * getBestChild: Retorna el hijo más visitado
-     * Se usa para seleccionar la acción final a retornar (mayor confianza empírica)
-     * @return: El nodo hijo con mayor número de visitas
-     */
+    /** Retorna el hijo con más visitas, usado como decisión final en la raíz. */
     fun getBestChild(): MCTSNode {
         return children.maxByOrNull { it.visits }!!
     }
     
     /**
-     * selectChild: Selecciona hijo usando UCB1 (Upper Confidence Bound)
-     * Balanceo entre explotación (mejor promedio) y exploración (menos visitados)
-     * Fórmula: exploitation + exploration
-     *   - exploitation = wins/visits (promedio de resultados)
-     *   - exploration = sqrt(2*ln(parentVisits)/childVisits) (bonus a no visitados)
-     * @return: El hijo que maximiza UCB1
+     * Selecciona el mejor hijo usando UCT con exploración dinámica.
+     *
+     * La constante de exploración se ajusta según el progreso de la partida
+     * y la ventaja heurística estimada entre ambos jugadores.
      */
     fun selectChild(params: MCTSParams): MCTSNode {
     val parentVisits = visits.coerceAtLeast(1)
@@ -201,13 +170,13 @@ class MCTSNode(val state: MCTSState, val playerId: Player, val parent: MCTSNode?
     val myPlayer = playerId
     val opponent = playerId.opponent()
 
-    // Evaluación rápida (lightweight)
+    // Evaluación rápida para ajustar la exploración de forma dinámica.
     val myScore = state.stateQuickEval(myPlayer)
     val oppScore = state.stateQuickEval(opponent)
 
     val leadFactor = (myScore - oppScore).coerceIn(-1.0, 1.0)
 
-    // === UCT dinámico ===
+    // UCT dinámico.
     val dynamicC = (
         params.explorationConstant *
         (1.0 - progress) *
