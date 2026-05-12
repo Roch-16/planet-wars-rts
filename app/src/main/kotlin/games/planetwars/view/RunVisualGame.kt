@@ -17,7 +17,7 @@ fun main() {
     val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val gameState = GameStateFactory(gameParams).createGame()
     val agent1 = ChocoAgent()//CarefulRandomAgent()
-    val agent2 = CarefulRandomAgent()//GreedyHeuristicAgent()
+    val agent2 = GreedyHeuristicAgent()
     // sub in different agents as needed
 //    val agent1 = PureRandomAgent()
     val gameRunner = GameRunner(agent1, agent2, gameParams)

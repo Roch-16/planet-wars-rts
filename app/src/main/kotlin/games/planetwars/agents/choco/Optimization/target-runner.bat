@@ -2,6 +2,7 @@
 setlocal
 
 set attack=0.5
+set execution=0.65
 set targets=5
 set defense=5.0
 set territory=10.0
@@ -16,28 +17,35 @@ set ownbonus=0.1
 set bias=0.3
 
 REM Support both styles:
-REM 1) Manual positional: 13 raw values
+REM 1) Manual positional: 14 raw values
 REM 2) iRace style: ... --param value (with optional control args before params)
-if not "%~13"=="" if "%~14"=="" (
+if not "%~14"=="" if "%~15"=="" (
 	set attack=%1
-	set targets=%2
-	set defense=%3
-	set territory=%4
-	set shipdiff=%5
-	set egrowth=%6
-	set lgrowth=%7
-	set etransit=%8
-	set ltransit=%9
-	set enemybonus=%~10
-	set neutralbonus=%~11
-	set ownbonus=%~12
-	set bias=%~13
+	set execution=%2
+	set targets=%3
+	set defense=%4
+	set territory=%5
+	set shipdiff=%6
+	set egrowth=%7
+	set lgrowth=%8
+	set etransit=%9
+	set ltransit=%~10
+	set enemybonus=%~11
+	set neutralbonus=%~12
+	set ownbonus=%~13
+	set bias=%~14
 ) else (
 	:parse_args
 	if "%~1"=="" goto done_parse
 
 	if /I "%~1"=="--attackShipsFraction" (
 		set attack=%~2
+		shift
+		shift
+		goto parse_args
+	)
+	if /I "%~1"=="--attackShipsExecution" (
+		set execution=%~2
 		shift
 		shift
 		goto parse_args
@@ -117,6 +125,7 @@ if not "%~13"=="" if "%~14"=="" (
 
 	for /f "tokens=1,2 delims==" %%A in ("%~1") do (
 		if /I "%%~A"=="--attackShipsFraction" set attack=%%~B
+		if /I "%%~A"=="--attackShipsExecution" set execution=%%~B
 		if /I "%%~A"=="--topTargetsPerSource" set targets=%%~B
 		if /I "%%~A"=="--minDefenseShips" set defense=%%~B
 		if /I "%%~A"=="--territoryWeight" set territory=%%~B
@@ -140,7 +149,7 @@ if not "%~13"=="" if "%~14"=="" (
 set ROOT_DIR=%~dp0..\..\..\..\..\..\..\..\..
 for %%I in ("%ROOT_DIR%") do set ROOT_DIR=%%~fI
 
-set ARGS=%attack%,%targets%,%defense%,%territory%,%shipdiff%,%egrowth%,%lgrowth%,%etransit%,%ltransit%,%enemybonus%,%neutralbonus%,%ownbonus%,%bias%
+set ARGS=%attack%,%execution%,%targets%,%defense%,%territory%,%shipdiff%,%egrowth%,%lgrowth%,%etransit%,%ltransit%,%enemybonus%,%neutralbonus%,%ownbonus%,%bias%
 set SCORE=
 
 for /f "delims=" %%S in ('call "%ROOT_DIR%\gradlew.bat" -q :app:runChocoIrace --args="%ARGS%" 2^>nul ^| findstr /R "^[0-9][0-9]*\.[0-9][0-9]*$"') do set SCORE=%%S

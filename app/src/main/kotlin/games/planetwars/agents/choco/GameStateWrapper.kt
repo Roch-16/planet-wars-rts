@@ -119,12 +119,12 @@ data class GameStateWrapper(
     override fun takeAction(action: Action): MCTSState {
         val newState = gameState.deepCopy()
         val model = ForwardModel(newState, params)
-        val oponent = playerId.opponent()
+        val opponent = playerId.opponent()
 
-        val oponentAction = getActions(oponent).randomOrNull() ?: Action.doNothing()
+        // Oponente juega aleatorio puro — no modelar su estrategia
+        val opponentAction = Action.doNothing()
 
-        model.step(mapOf(playerId to action, oponent to oponentAction))
-
+        model.step(mapOf(playerId to action, opponent to opponentAction))
         return GameStateWrapper(newState, playerId, params, mcts)
     }
     
@@ -177,7 +177,7 @@ data class GameStateWrapper(
        }
 
        // Siempre dejar disponible la opción de no hacer nada.
-       if (actions.isEmpty()) { actions.add(Action.doNothing()) }
+       actions.add(Action.doNothing())
        
        // Neutralizar el orden: barajar antes de recortar para que UCT decida qué explorar.
        if (actions.size > mcts.maxActionsPerState) { 
@@ -230,17 +230,16 @@ data class GameStateWrapper(
             else -> 1.0 + 0.5 * urgency
         }
 
-        return ownershipBonus * target.growthRate * viabilityFactor * redundancyFactor * urgencyBoost / (distance + 1.0)
+        return ownershipBonus * target.growthRate * viabilityFactor * redundancyFactor * urgencyBoost / 
+    ((distance + 1.0) * (distance + 1.0))
     }
 
     /** Indica si un ataque supera la defensa estimada del objetivo. */
     private fun isAttackViable(source: Planet, target: Planet): Boolean {
-        val distance = source.position.distance(target.position)
-
-        val shipsToSend = source.nShips * mcts.attackShipsFraction
-        val expectedDefense = target.nShips + target.growthRate * distance
-
-        return shipsToSend > expectedDefense
+        //val distance = source.position.distance(target.position)
+        val shipsToSend = source.nShips * mcts.attackShipsFraction  // umbral conservador
+        
+        return shipsToSend > target.nShips
     }
 
     /** Detecta si un planeta recibe más naves enemigas de las que puede sostener. */
@@ -294,13 +293,10 @@ data class GameStateWrapper(
     }
 
     private fun attackPlanet(source: Planet, target: Planet, playerId: Player): Action? {
-        //val distance = source.position.distance(target.position)
-        val shipsToSend = (source.nShips * mcts.attackShipsFraction).coerceAtLeast(1.0)
-        val viable = isAttackViable(source, target)
-
-        // Mantener algo de exploración incluso cuando el ataque no parece rentable.
-        if (!viable && Math.random() > 0.3) return null
-
+        if (!isAttackViable(source, target)) return null
+        val shipsToSend = (source.nShips * mcts.attackShipsExecution)  // ejecuta con más naves
+            .coerceAtLeast(1.0)
+            .coerceAtMost(source.nShips)  // nunca más de las disponibles
         return Action(playerId, source.id, target.id, shipsToSend)
     }
 
