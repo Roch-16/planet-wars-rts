@@ -167,30 +167,32 @@ class MCTSNode(val state: MCTSState, val playerId: Player, val parent: MCTSNode?
             wrapper.gameState.gameTick.toDouble() / wrapper.params.maxTicks
         } else 0.5
 
-        val myPlayer = playerId
-
-        // UCT dinámico.
-        val dynamicC = (
-            params.explorationConstant *
-            (1.0 - progress) *
-            (1.0 - 0.5 * cachedLeadFactor) // Ajusta la exploración según la ventaja heurística
-        ).coerceIn(0.1, 2.5)
-
         return children.maxByOrNull { child ->
             if (child.visits == 0) {
                 Double.POSITIVE_INFINITY
             } else {
+                // leadFactor calculado por hijo, no heredado del padre
+                val childLeadFactor = run {
+                    val my = child.state.stateQuickEval(playerId)
+                    val opp = child.state.stateQuickEval(playerId.opponent())
+                    (my - opp).coerceIn(-1.0, 1.0)
+                }
+
+                val dynamicC = (params.explorationConstant *
+                    (1.0 - progress * 0.5) *
+                    (1.0 - 0.5 * childLeadFactor)
+                ).coerceIn(0.3, 2.0)
+
                 val exploitation = child.wins / child.visits
-                val exploration = Math.sqrt(
+                val exploration = dynamicC * Math.sqrt(
                     Math.log(parentVisits.toDouble()) / child.visits
                 )
                 val progressiveBias = if (wrapper != null && child.action != null) {
-                    params.biasWeight * wrapper.actionHeuristic(child.action!!, myPlayer) / (child.visits + 1.0)
-                } else {
-                    0.0
-                }
+                    params.biasWeight * wrapper.actionHeuristic(child.action!!, playerId) /
+                    (child.visits * child.visits + 1.0)
+                } else 0.0
 
-                exploitation + dynamicC * exploration + progressiveBias
+                exploitation + exploration + progressiveBias
             }
         }!!
     }

@@ -54,9 +54,9 @@ fun main(args: Array<String>) {
     val baselineAgents = SamplePlayerLists().getRandomTrio()
     baselineAgents.clear()
     // baselineAgents.add(BetterRandomAgent())  // Removed to reduce sanity check time
-    //baselineAgents.add(CarefulRandomAgent())
+    baselineAgents.add(CarefulRandomAgent())
     baselineAgents.add(GreedyHeuristicAgent())
-    baselineAgents.add(SimpleEvoAgent())
+    //baselineAgents.add(SimpleEvoAgent())
     val remoteAgent = RemoteAgent("<unused - name retrieved from remoteAgent>", port = remotePort)
     val testAgentName = waitForAgentType(remoteAgent)
     val results = mutableListOf<Triple<String, Double, Int>>()

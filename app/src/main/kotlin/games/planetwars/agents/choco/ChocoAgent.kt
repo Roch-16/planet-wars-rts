@@ -10,7 +10,7 @@ class ChocoAgent(val mctsParams: MCTSParams = MCTSParams()) : PlanetWarsPlayer()
 
     override fun getAgentType() : String
     {
-        return "ChocoAgent - MCTS"
+        return "ISILabAgent - MCTS"
     }
 
     override fun getAction(gameState : GameState): Action

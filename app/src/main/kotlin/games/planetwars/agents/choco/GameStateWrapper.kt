@@ -46,45 +46,48 @@ data class GameStateWrapper(
      * del total de naves acumuladas en ambos bandos.
      */
     override fun getResult(playerId: Player): Double {
-        
+        // Chequeo terminal primero
+        if (isTerminal()) {
+            val myTotal = gameState.planets
+                .filter { it.owner == playerId }.sumOf { it.nShips } +
+                gameState.planets.mapNotNull { it.transporter }
+                .filter { it.owner == playerId }.sumOf { it.nShips }
+            val oppTotal = gameState.planets
+                .filter { it.owner == playerId.opponent() }.sumOf { it.nShips } +
+                gameState.planets.mapNotNull { it.transporter }
+                .filter { it.owner == playerId.opponent() }.sumOf { it.nShips }
+            return when {
+                myTotal > oppTotal -> 100.0   // misma escala que la heurística
+                myTotal < oppTotal -> -100.0
+                else -> 0.0
+            }
+        }
+
         val opponent = playerId.opponent()
 
-        // Naves en planetas y en tránsito para ambos jugadores.
         val myShips = gameState.planets
-            .filter { it.owner == playerId }
-            .sumOf { it.nShips }
-
+            .filter { it.owner == playerId }.sumOf { it.nShips }
         val oppShips = gameState.planets
-            .filter { it.owner == opponent }
-            .sumOf { it.nShips }
+            .filter { it.owner == opponent }.sumOf { it.nShips }
 
         val myTransitShips = gameState.planets
             .mapNotNull { it.transporter }
-            .filter { it.owner == playerId }
-            .sumOf { it.nShips }
-
+            .filter { it.owner == playerId }.sumOf { it.nShips }
         val oppTransitShips = gameState.planets
             .mapNotNull { it.transporter }
-            .filter { it.owner == opponent }
-            .sumOf { it.nShips }
+            .filter { it.owner == opponent }.sumOf { it.nShips }
 
         val myTotal = myShips + myTransitShips
         val oppTotal = oppShips + oppTransitShips
 
-        // Crecimiento total por tick para ambos jugadores.
         val myGrowth = gameState.planets
-            .filter { it.owner == playerId }
-            .sumOf { it.growthRate }
-
+            .filter { it.owner == playerId }.sumOf { it.growthRate }
         val oppGrowth = gameState.planets
-            .filter { it.owner == opponent }
-            .sumOf { it.growthRate }
+            .filter { it.owner == opponent }.sumOf { it.growthRate }
 
-        // Control territorial: planetas propios menos planetas rivales.
         val myPlanets = gameState.planets.count { it.owner == playerId }
         val oppPlanets = gameState.planets.count { it.owner == opponent }
-        val territoryScore = (myPlanets - oppPlanets) * mcts.territoryWeight
-            
+
         val progress = if (params.maxTicks > 0)
             gameState.gameTick.toDouble() / params.maxTicks
         else 0.0
@@ -93,21 +96,11 @@ data class GameStateWrapper(
         val transitWeight = if (progress < 0.5) mcts.earlyTransitWeight else mcts.lateTransitWeight
 
         val shipDiff = (myTotal - oppTotal) / mcts.shipDiffDivisor
+        val territoryScore = (myPlanets - oppPlanets) * mcts.territoryWeight
+        val growthScore = growthWeight * (myGrowth - oppGrowth)
+        val transitScore = transitWeight * (myTransitShips - oppTransitShips)
 
-        // Si el juego terminó, usar una recompensa terminal clara.
-        if (isTerminal()) {
-            return when {
-                myTotal > oppTotal -> mcts.terminalWinScore
-                myTotal < oppTotal -> -mcts.terminalWinScore
-                else -> 0.0
-            }
-        }
-
-        // Heurística para estados no terminales.
-        return shipDiff +
-            growthWeight * (myGrowth - oppGrowth) +
-            transitWeight * (myTransitShips - oppTransitShips) +
-            territoryScore
+        return shipDiff + growthScore + transitScore + territoryScore
     }
     
     /**
@@ -283,9 +276,10 @@ data class GameStateWrapper(
 
             // Enviar hasta lo que necesitamos (máximo: todas menos defensa mínima)
             val availableShips = (defender.nShips - mcts.minDefenseShips).coerceAtMost(shipsToSend)
-            if (availableShips > 0) {
-                defenseActions.add(Action(playerId, defender.id, dangerPlanet.id, availableShips))
-                shipsToSend -= availableShips
+            val shipsToSendInt = availableShips.toInt().coerceAtLeast(1)  // Asegurar ≥ 1
+            if (shipsToSendInt > 0) {
+                defenseActions.add(Action(playerId, defender.id, dangerPlanet.id, shipsToSendInt.toDouble()))
+                shipsToSend -= shipsToSendInt
             }
         }
 
@@ -295,9 +289,10 @@ data class GameStateWrapper(
     private fun attackPlanet(source: Planet, target: Planet, playerId: Player): Action? {
         if (!isAttackViable(source, target)) return null
         val shipsToSend = (source.nShips * mcts.attackShipsExecution)  // ejecuta con más naves
-            .coerceAtLeast(1.0)
-            .coerceAtMost(source.nShips)  // nunca más de las disponibles
-        return Action(playerId, source.id, target.id, shipsToSend)
+            .toInt()
+            .coerceAtLeast(1)  // Asegurar ≥ 1 nave
+            .coerceAtMost(source.nShips.toInt())  // nunca más de las disponibles
+        return Action(playerId, source.id, target.id, shipsToSend.toDouble())
     }
 
     /** Evaluación rápida heurística para ajustar la exploración durante la selección. 
