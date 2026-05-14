@@ -31,7 +31,6 @@ interface MCTSState {
     fun getActions(playerId: Player): List<Action>
 
     /** Evaluación rápida heurística para ajustar la exploración durante la selección. */
-    /** propia implementación */
     fun stateQuickEval(playerId: Player): Double
 }
 
@@ -202,4 +201,5 @@ class MCTSNode(val state: MCTSState, val playerId: Player, val parent: MCTSNode?
         val opp = state.stateQuickEval(playerId.opponent())
         (my - opp).coerceIn(-1.0, 1.0)
     }
+
 }

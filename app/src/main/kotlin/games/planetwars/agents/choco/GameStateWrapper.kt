@@ -15,13 +15,6 @@ import games.planetwars.core.Planet
  * Convierte GameState en la interfaz esperada por el árbol, generando acciones,
  * aplicando simulaciones con ForwardModel y evaluando los estados con una heurística.
  */
-
-/**
- * Implementación concreta de MCTSState para Planet Wars.
- *
- * Encapsula el estado del juego, los parámetros de simulación y los ajustes
- * del árbol para evaluar acciones sin mutar el estado original.
- */
 data class GameStateWrapper(
     val gameState: GameState,
     val playerId: Player,
@@ -227,7 +220,7 @@ data class GameStateWrapper(
     ((distance + 1.0) * (distance + 1.0))
     }
 
-    /** Indica si un ataque supera la defensa estimada del objetivo. */
+    /** Indica si el ataque supera de forma conservadora la defensa actual del objetivo. */
     private fun isAttackViable(source: Planet, target: Planet): Boolean {
         //val distance = source.position.distance(target.position)
         val shipsToSend = source.nShips * mcts.attackShipsFraction  // umbral conservador
