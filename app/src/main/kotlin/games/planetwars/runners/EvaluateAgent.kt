@@ -6,6 +6,9 @@ import games.planetwars.agents.RemoteAgent
 import games.planetwars.agents.evo.SimpleEvoAgent
 import games.planetwars.agents.random.BetterRandomAgent
 import games.planetwars.agents.random.CarefulRandomAgent
+import games.planetwars.agents.random.HeavyRandomAgent
+import games.planetwars.agents.random.PureRandomAgent
+import games.planetwars.agents.random.SlowRandomAgent
 import games.planetwars.core.GameParams
 import games.planetwars.core.GameParamGenerator
 import json_rmi.SimpleAgent
@@ -53,8 +56,11 @@ fun main(args: Array<String>) {
     val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val baselineAgents = SamplePlayerLists().getRandomTrio()
     baselineAgents.clear()
-    // baselineAgents.add(BetterRandomAgent())  // Removed to reduce sanity check time
-    //baselineAgents.add(CarefulRandomAgent())
+    baselineAgents.add(PureRandomAgent())
+    baselineAgents.add(BetterRandomAgent())  // Removed to reduce sanity check time
+    baselineAgents.add(CarefulRandomAgent())
+    baselineAgents.add(SlowRandomAgent())
+    baselineAgents.add(HeavyRandomAgent(400))
     baselineAgents.add(GreedyHeuristicAgent())
     baselineAgents.add(SimpleEvoAgent())
     val remoteAgent = RemoteAgent("<unused - name retrieved from remoteAgent>", port = remotePort)
