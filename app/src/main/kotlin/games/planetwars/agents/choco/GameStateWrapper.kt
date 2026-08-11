@@ -121,6 +121,9 @@ data class GameStateWrapper(
     override fun takeRandomAction(): MCTSState {
         if (cachedActions == null) cachedActions = getActions(playerId)
         val randomAction = cachedActions!!.randomOrNull() ?: return this
+        //val actions = getActions(playerId)
+        //if (actions.isEmpty()) return this
+        //val randomAction = actions.random()
         return takeAction(randomAction)
     }
     

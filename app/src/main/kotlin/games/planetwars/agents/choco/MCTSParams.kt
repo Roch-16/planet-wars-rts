@@ -2,7 +2,7 @@ package games.planetwars.agents.choco
 
 data class MCTSParams(
 
-    val maxIterations: Int = 150,
+    val maxIterations: Int = 120,
     val maxRolloutDepth: Int = 32,
     val maxActionsPerState: Int = 24,
     val timeBudgetMs: Long = 15,

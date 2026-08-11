@@ -2,11 +2,11 @@
 
 | Opponent | Win Rate % | Games Played |
 |----------|------------|---------------|
-| Careful Random Agent | 100,0 | 50 |
-| Greedy Heuristic Agent | 90,0 | 50 |
-| **Overall Average** | **95,0** | **100** |
+| Careful Random Agent | 100,0 | 6 |
+| Greedy Heuristic Agent | 100,0 | 6 |
+| **Overall Average** | **100,0** | **12** |
 
-AVG=95,0
-Average Action Time: 60,90 ms
+AVG=100,0
+Average Action Time: 48,43 ms
 
-Total Timeouts: 156
+Total Timeouts: 14

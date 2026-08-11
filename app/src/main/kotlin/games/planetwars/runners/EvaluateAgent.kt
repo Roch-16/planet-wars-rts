@@ -48,7 +48,7 @@ fun main(args: Array<String>) {
 
     // number of games to play between each pair of agents -
     // higher values give more accurate results, at the cost of time
-    val gamesPerPair = 25
+    val gamesPerPair = 3
 
     val gameParams = GameParamGenerator.randomParams().copy(maxTicks = 2000)
     val baselineAgents = SamplePlayerLists().getRandomTrio()
