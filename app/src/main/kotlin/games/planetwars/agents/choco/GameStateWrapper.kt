@@ -20,6 +20,7 @@ data class GameStateWrapper(
     val playerId: Player,
     val params: GameParams = GameParams(),
     val mcts: MCTSParams = MCTSParams()
+    
 ) : MCTSState {
     
     /** El estado es terminal si se alcanza el límite de ticks o si un jugador se queda sin planetas. */
@@ -114,11 +115,12 @@ data class GameStateWrapper(
         return GameStateWrapper(newState, playerId, params, mcts)
     }
     
+    private var cachedActions: List<Action>? = null
+
     /** Aplica una acción aleatoria del jugador actual para los rollouts. */
     override fun takeRandomAction(): MCTSState {
-        val actions = getActions(playerId)
-        if (actions.isEmpty()) return this
-        val randomAction = actions.random()
+        if (cachedActions == null) cachedActions = getActions(playerId)
+        val randomAction = cachedActions!!.randomOrNull() ?: return this
         return takeAction(randomAction)
     }
     
@@ -169,8 +171,9 @@ data class GameStateWrapper(
        if (actions.size > mcts.maxActionsPerState) { 
            return actions.shuffled().take(mcts.maxActionsPerState) 
        }
+       actions.shuffled()
 
-       return actions.shuffled()
+       return actions
     }
 
     /**
